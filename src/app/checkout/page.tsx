@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -10,6 +10,9 @@ import {
   QrCode,
   FileText,
   ShoppingCart,
+  Loader2,
+  Ticket,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +23,7 @@ import { toast } from "sonner";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
+import type { AttendeeData } from "@/lib/api";
 
 function maskCPF(value: string): string {
   return value
@@ -56,18 +60,75 @@ function maskCVV(value: string): string {
   return value.replace(/\D/g, "").slice(0, 4);
 }
 
+interface ExpandedTicket {
+  key: string;
+  ticketTierId: number;
+  ticketType: string;
+  indexInTier: number;
+}
+
 const Checkout = () => {
   const router = useRouter();
-  const { items, cartTotal, completePurchase } = useCart();
+  const { items, cartTotal, cartCount, completePurchase } = useCart();
 
+  // Buyer data
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cpf, setCpf] = useState("");
   const [phone, setPhone] = useState("");
+
+  // Payment
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCVV, setCardCVV] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Expand cart items into individual tickets
+  const expandedTickets: ExpandedTicket[] = useMemo(() => {
+    const result: ExpandedTicket[] = [];
+    for (const item of items) {
+      for (let i = 0; i < item.quantity; i++) {
+        result.push({
+          key: `${item.ticketTierId}-${i}`,
+          ticketTierId: item.ticketTierId,
+          ticketType: item.ticketType,
+          indexInTier: i,
+        });
+      }
+    }
+    return result;
+  }, [items]);
+
+  // Attendee data per ticket: key -> { name, email, cpf }
+  const [attendees, setAttendees] = useState<Record<string, AttendeeData>>({});
+
+  const updateAttendee = useCallback(
+    (key: string, field: keyof AttendeeData, value: string) => {
+      setAttendees((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [field]: value,
+        },
+      }));
+    },
+    []
+  );
+
+  const copyBuyerToAttendee = useCallback(
+    (key: string) => {
+      setAttendees((prev) => ({
+        ...prev,
+        [key]: {
+          name: name,
+          email: email,
+          cpf: cpf,
+        },
+      }));
+    },
+    [name, email, cpf]
+  );
 
   if (items.length === 0) {
     return (
@@ -92,19 +153,55 @@ const Checkout = () => {
     );
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    // Validate buyer
     if (!name.trim() || !email.trim() || !cpf.trim() || !phone.trim()) {
-      toast.error("Preencha todos os campos obrigatórios.");
+      toast.error("Preencha todos os dados do comprador.");
       return;
     }
 
-    const order = completePurchase(
-      { name: name.trim(), email: email.trim(), cpf: cpf.trim(), phone: phone.trim() },
-      paymentMethod
-    );
+    // Validate all attendees
+    for (const ticket of expandedTickets) {
+      const att = attendees[ticket.key];
+      if (!att?.name?.trim() || !att?.email?.trim() || !att?.cpf?.trim()) {
+        toast.error(
+          `Preencha os dados do participante: ${ticket.ticketType} #${ticket.indexInTier + 1}`
+        );
+        return;
+      }
+    }
 
-    toast.success("Compra realizada com sucesso!");
-    router.push(`/pedido-confirmado/${order.id}`);
+    // Build attendeesMap grouped by ticketTierId
+    const attendeesMap: Record<number, AttendeeData[]> = {};
+    for (const ticket of expandedTickets) {
+      const att = attendees[ticket.key];
+      if (!attendeesMap[ticket.ticketTierId]) {
+        attendeesMap[ticket.ticketTierId] = [];
+      }
+      attendeesMap[ticket.ticketTierId].push({
+        name: att.name.trim(),
+        email: att.email.trim(),
+        cpf: att.cpf.trim(),
+      });
+    }
+
+    setIsSubmitting(true);
+    try {
+      const order = await completePurchase(
+        { name: name.trim(), email: email.trim(), cpf: cpf.trim(), phone: phone.trim() },
+        paymentMethod,
+        attendeesMap
+      );
+
+      toast.success("Compra realizada com sucesso!");
+      router.push(`/pedido-confirmado/${order.hash}`);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Erro ao processar pedido.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -126,15 +223,15 @@ const Checkout = () => {
 
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Form */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Customer data */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Buyer data */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-card rounded-2xl p-6 border border-border/50"
               >
                 <h2 className="font-display text-xl font-bold mb-6">
-                  Dados pessoais
+                  Dados do comprador
                 </h2>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -144,6 +241,7 @@ const Checkout = () => {
                       placeholder="Seu nome completo"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div className="space-y-2">
@@ -154,6 +252,7 @@ const Checkout = () => {
                       placeholder="seu@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div className="space-y-2">
@@ -163,6 +262,7 @@ const Checkout = () => {
                       placeholder="000.000.000-00"
                       value={cpf}
                       onChange={(e) => setCpf(maskCPF(e.target.value))}
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div className="space-y-2">
@@ -172,10 +272,117 @@ const Checkout = () => {
                       placeholder="(00) 00000-0000"
                       value={phone}
                       onChange={(e) => setPhone(maskPhone(e.target.value))}
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
               </motion.div>
+
+              {/* Individual attendee cards */}
+              <div className="space-y-4">
+                <h2 className="font-display text-xl font-bold">
+                  Dados dos participantes
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    ({cartCount} {cartCount === 1 ? "ingresso" : "ingressos"})
+                  </span>
+                </h2>
+
+                {expandedTickets.map((ticket, idx) => {
+                  const att = attendees[ticket.key] || { name: "", email: "", cpf: "" };
+                  return (
+                    <motion.div
+                      key={ticket.key}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.05 * idx }}
+                      className="bg-card rounded-2xl p-5 border border-border/50"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Ticket className="w-4 h-4 text-primary" />
+                          <span className="font-semibold text-sm">
+                            {ticket.ticketType}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            — Ingresso {ticket.indexInTier + 1}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyBuyerToAttendee(ticket.key)}
+                          disabled={isSubmitting}
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                        >
+                          <Copy className="w-3 h-3" />
+                          Copiar dados do comprador
+                        </button>
+                      </div>
+
+                      <div className="grid sm:grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor={`att-name-${ticket.key}`}
+                            className="text-xs"
+                          >
+                            Nome completo *
+                          </Label>
+                          <Input
+                            id={`att-name-${ticket.key}`}
+                            placeholder="Nome do participante"
+                            value={att.name}
+                            onChange={(e) =>
+                              updateAttendee(ticket.key, "name", e.target.value)
+                            }
+                            disabled={isSubmitting}
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor={`att-email-${ticket.key}`}
+                            className="text-xs"
+                          >
+                            E-mail *
+                          </Label>
+                          <Input
+                            id={`att-email-${ticket.key}`}
+                            type="email"
+                            placeholder="email@exemplo.com"
+                            value={att.email}
+                            onChange={(e) =>
+                              updateAttendee(ticket.key, "email", e.target.value)
+                            }
+                            disabled={isSubmitting}
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor={`att-cpf-${ticket.key}`}
+                            className="text-xs"
+                          >
+                            CPF *
+                          </Label>
+                          <Input
+                            id={`att-cpf-${ticket.key}`}
+                            placeholder="000.000.000-00"
+                            value={att.cpf}
+                            onChange={(e) =>
+                              updateAttendee(
+                                ticket.key,
+                                "cpf",
+                                maskCPF(e.target.value)
+                              )
+                            }
+                            disabled={isSubmitting}
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
 
               {/* Payment */}
               <motion.div
@@ -192,15 +399,15 @@ const Checkout = () => {
                   onValueChange={setPaymentMethod}
                 >
                   <TabsList className="w-full grid grid-cols-3">
-                    <TabsTrigger value="card" className="gap-2">
+                    <TabsTrigger value="card" className="gap-2" disabled={isSubmitting}>
                       <CreditCard className="w-4 h-4" />
                       <span className="hidden sm:inline">Cartão</span>
                     </TabsTrigger>
-                    <TabsTrigger value="pix" className="gap-2">
+                    <TabsTrigger value="pix" className="gap-2" disabled={isSubmitting}>
                       <QrCode className="w-4 h-4" />
                       <span className="hidden sm:inline">PIX</span>
                     </TabsTrigger>
-                    <TabsTrigger value="boleto" className="gap-2">
+                    <TabsTrigger value="boleto" className="gap-2" disabled={isSubmitting}>
                       <FileText className="w-4 h-4" />
                       <span className="hidden sm:inline">Boleto</span>
                     </TabsTrigger>
@@ -214,6 +421,7 @@ const Checkout = () => {
                         placeholder="0000 0000 0000 0000"
                         value={cardNumber}
                         onChange={(e) => setCardNumber(maskCardNumber(e.target.value))}
+                        disabled={isSubmitting}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -224,6 +432,7 @@ const Checkout = () => {
                           placeholder="MM/AA"
                           value={cardExpiry}
                           onChange={(e) => setCardExpiry(maskExpiry(e.target.value))}
+                          disabled={isSubmitting}
                         />
                       </div>
                       <div className="space-y-2">
@@ -233,6 +442,7 @@ const Checkout = () => {
                           placeholder="000"
                           value={cardCVV}
                           onChange={(e) => setCardCVV(maskCVV(e.target.value))}
+                          disabled={isSubmitting}
                         />
                       </div>
                     </div>
@@ -342,8 +552,16 @@ const Checkout = () => {
                   size="xl"
                   className="w-full"
                   onClick={handleSubmit}
+                  disabled={isSubmitting}
                 >
-                  Confirmar Compra
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    "Confirmar Compra"
+                  )}
                 </Button>
 
                 <p className="text-center text-xs text-muted-foreground mt-4">

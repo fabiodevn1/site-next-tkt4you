@@ -5,59 +5,56 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Calendar, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import type { ApiEvent } from "@/types/api";
+import { useEvents } from "@/hooks/use-events";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-interface FeaturedEvent {
-  id: string;
-  title: string;
-  artist: string;
-  date: string;
-  location: string;
-  image: string;
-  gradient: string;
-}
-
-const featuredEvents: FeaturedEvent[] = [
-  {
-    id: "1",
-    title: "Cosmic Night Festival",
-    artist: "DJ Nebula & Friends",
-    date: "15 Mar 2025",
-    location: "Arena Galaxy, São Paulo",
-    image: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1920&q=80",
-    gradient: "from-ticket-blue/80 via-ticket-sky/60 to-transparent",
-  },
-  {
-    id: "2",
-    title: "Stellar Rock Tour",
-    artist: "The Asteroids",
-    date: "22 Mar 2025",
-    location: "Estádio Orbital, Rio de Janeiro",
-    image: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1920&q=80",
-    gradient: "from-ticket-blue-dark/80 via-ticket-blue/60 to-transparent",
-  },
-  {
-    id: "3",
-    title: "Neon Dreams",
-    artist: "Aurora Beats",
-    date: "30 Mar 2025",
-    location: "Centro de Eventos Cosmos, Curitiba",
-    image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1920&q=80",
-    gradient: "from-ticket-sky/80 via-ticket-blue-light/60 to-transparent",
-  },
+const gradients = [
+  "from-ticket-blue/80 via-ticket-sky/60 to-transparent",
+  "from-ticket-blue-dark/80 via-ticket-blue/60 to-transparent",
+  "from-ticket-sky/80 via-ticket-blue-light/60 to-transparent",
 ];
 
 const HeroCarousel = () => {
   const [current, setCurrent] = useState(0);
+  const { data } = useEvents({ per_page: 5 });
+
+  const featuredEvents = data?.data ?? [];
+  const total = featuredEvents.length;
 
   useEffect(() => {
+    if (total === 0) return;
     const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % featuredEvents.length);
+      setCurrent((prev) => (prev + 1) % total);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [total]);
 
-  const prev = () => setCurrent((c) => (c === 0 ? featuredEvents.length - 1 : c - 1));
-  const next = () => setCurrent((c) => (c + 1) % featuredEvents.length);
+  if (total === 0) {
+    return (
+      <section className="relative h-[70vh] min-h-[500px] max-h-[800px] overflow-hidden wave-bg bg-gradient-to-r from-ticket-blue/80 via-ticket-sky/60 to-transparent flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="font-display text-4xl md:text-6xl font-bold text-primary-foreground mb-4">
+            Ticket4You
+          </h1>
+          <p className="text-xl text-primary-foreground/80">
+            Os melhores eventos em um só lugar
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const event = featuredEvents[current];
+  const prev = () => setCurrent((c) => (c === 0 ? total - 1 : c - 1));
+  const next = () => setCurrent((c) => (c + 1) % total);
+
+  const startsAt = new Date(event.starts_at);
+  const formattedDate = format(startsAt, "dd MMM yyyy", { locale: ptBR });
+  const locationText = event.is_online
+    ? "Evento Online"
+    : `${event.venue.name}, ${event.venue.city}`;
 
   return (
     <section className="relative h-[70vh] min-h-[500px] max-h-[800px] overflow-hidden wave-bg">
@@ -73,11 +70,15 @@ const HeroCarousel = () => {
           {/* Background Image */}
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${featuredEvents[current].image})` }}
+            style={{
+              backgroundImage: `url(${event.cover_image_url || "/placeholder.svg"})`,
+            }}
           />
 
           {/* Gradient Overlay */}
-          <div className={`absolute inset-0 bg-gradient-to-r ${featuredEvents[current].gradient}`} />
+          <div
+            className={`absolute inset-0 bg-gradient-to-r ${gradients[current % gradients.length]}`}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
 
           {/* Content */}
@@ -93,33 +94,39 @@ const HeroCarousel = () => {
               </span>
 
               <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold text-primary-foreground mb-4 leading-tight">
-                {featuredEvents[current].title}
+                {event.name}
               </h1>
 
               <p className="text-xl md:text-2xl text-primary-foreground/90 mb-6 font-medium">
-                {featuredEvents[current].artist}
+                {event.short_description || event.organizer?.name || ""}
               </p>
 
               <div className="flex flex-wrap gap-4 mb-8 text-primary-foreground/80">
                 <span className="flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
-                  {featuredEvents[current].date}
+                  {formattedDate}
                 </span>
                 <span className="flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
-                  {featuredEvents[current].location}
+                  {locationText}
                 </span>
               </div>
 
               <div className="flex flex-wrap gap-4">
-                <Link href={`/event/${featuredEvents[current].id}`}>
+                <Link href={`/event/${event.slug}`}>
                   <Button variant="ticket" size="xl">
                     Comprar Ingresso
                   </Button>
                 </Link>
-                <Button variant="outline" size="xl" className="border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10">
-                  Saiba Mais
-                </Button>
+                <Link href={`/event/${event.slug}`}>
+                  <Button
+                    variant="outline"
+                    size="xl"
+                    className="border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10"
+                  >
+                    Saiba Mais
+                  </Button>
+                </Link>
               </div>
             </motion.div>
           </div>
@@ -127,33 +134,39 @@ const HeroCarousel = () => {
       </AnimatePresence>
 
       {/* Navigation Arrows */}
-      <button
-        onClick={prev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-background/20 backdrop-blur-md flex items-center justify-center text-primary-foreground hover:bg-background/40 transition-colors"
-      >
-        <ChevronLeft className="w-6 h-6" />
-      </button>
-      <button
-        onClick={next}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-background/20 backdrop-blur-md flex items-center justify-center text-primary-foreground hover:bg-background/40 transition-colors"
-      >
-        <ChevronRight className="w-6 h-6" />
-      </button>
+      {total > 1 && (
+        <>
+          <button
+            onClick={prev}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-background/20 backdrop-blur-md flex items-center justify-center text-primary-foreground hover:bg-background/40 transition-colors"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button
+            onClick={next}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-background/20 backdrop-blur-md flex items-center justify-center text-primary-foreground hover:bg-background/40 transition-colors"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </>
+      )}
 
       {/* Dots */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-3">
-        {featuredEvents.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrent(i)}
-            className={`w-3 h-3 rounded-full transition-all duration-300 ${
-              i === current
-                ? "w-8 ticket-gradient"
-                : "bg-primary-foreground/40 hover:bg-primary-foreground/60"
-            }`}
-          />
-        ))}
-      </div>
+      {total > 1 && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-3">
+          {featuredEvents.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                i === current
+                  ? "w-8 ticket-gradient"
+                  : "bg-primary-foreground/40 hover:bg-primary-foreground/60"
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 };

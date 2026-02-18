@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -37,6 +38,9 @@ const CartSidebar = () => {
             <ShoppingCart className="w-5 h-5" />
             Carrinho ({cartCount})
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            Itens no seu carrinho de compras
+          </SheetDescription>
         </SheetHeader>
 
         {items.length === 0 ? (

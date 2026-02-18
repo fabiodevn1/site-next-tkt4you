@@ -1,27 +1,49 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CheckCircle2, Ticket, ShoppingBag, Download } from "lucide-react";
+import { CheckCircle2, Ticket, ShoppingBag, Download, Loader2, Calendar, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useCart } from "@/contexts/CartContext";
+import { fetchOrderByHash, type ApiOrderResponse } from "@/lib/api";
 
 const OrderSuccess = () => {
   const params = useParams();
-  const orderId = params.orderId as string;
-  const { orders } = useCart();
+  const orderHash = params.orderId as string;
+  const [order, setOrder] = useState<ApiOrderResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const order = orders.find((o) => o.id === orderId);
+  useEffect(() => {
+    fetchOrderByHash(orderHash)
+      .then((res) => setOrder(res.data))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, [orderHash]);
 
   const handleExportTicket = () => {
     window.print();
   };
 
-  if (!order) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-24 lg:pt-28 pb-16 px-4">
+          <div className="container mx-auto flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !order) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -39,6 +61,17 @@ const OrderSuccess = () => {
       </div>
     );
   }
+
+  const paymentLabel =
+    order.payment_method === "credit_card"
+      ? "Cartão de Crédito"
+      : order.payment_method === "debit_card"
+      ? "Cartão de Débito"
+      : order.payment_method === "pix"
+      ? "PIX"
+      : order.payment_method === "boleto"
+      ? "Boleto"
+      : order.payment_method;
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,49 +101,72 @@ const OrderSuccess = () => {
             className="bg-muted/50 rounded-xl p-5 mb-6 text-center no-print"
           >
             <p className="font-medium text-foreground">
-              Obrigado pela sua compra, {order.customer.name.split(" ")[0]}!
+              Obrigado pela sua compra, {order.billing_name?.split(" ")[0]}!
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Enviamos a confirmação para {order.customer.email}
+              Enviamos a confirmação para {order.billing_email}
             </p>
           </motion.div>
 
+          {/* Order summary - visible on screen, hidden on print */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="bg-card rounded-2xl p-6 border border-border/50 mb-6 print-ticket"
+            className="bg-card rounded-2xl p-6 border border-border/50 mb-6 no-print"
           >
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-display text-lg font-bold">
-                Detalhes do Pedido
+                Resumo do Pedido
               </h2>
               <span className="text-xs text-muted-foreground font-mono">
-                {order.id.slice(0, 8).toUpperCase()}
+                {order.hash}
               </span>
             </div>
 
-            <div className="space-y-4">
-              {order.items.map((item, idx) => (
-                <div key={idx} className="flex gap-3">
+            {order.event && (
+              <div className="flex gap-3 mb-4">
+                {order.event.cover_image_url && (
                   <img
-                    src={item.eventImage}
-                    alt={item.eventTitle}
+                    src={order.event.cover_image_url}
+                    alt={order.event.name}
                     className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">
-                      {item.eventTitle}
-                    </p>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">
+                    {order.event.name}
+                  </p>
+                  {order.event.starts_at && (
                     <p className="text-xs text-muted-foreground">
-                      {item.eventDate}
+                      {new Date(order.event.starts_at).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric",
+                      })}
                     </p>
-                    <p className="text-xs text-primary font-medium">
-                      {item.ticketType} x{item.quantity}
+                  )}
+                  {order.event.venue_name && (
+                    <p className="text-xs text-muted-foreground">
+                      {order.event.venue_name}
+                      {order.event.venue_city ? `, ${order.event.venue_city}` : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {order.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-medium">{item.ticket_tier_name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.quantity}x R$ {parseFloat(item.unit_price).toFixed(2)}
                     </p>
                   </div>
-                  <span className="font-semibold text-sm flex-shrink-0">
-                    R$ {(item.price * item.quantity).toFixed(2)}
+                  <span className="font-semibold text-sm">
+                    R$ {parseFloat(item.subtotal).toFixed(2)}
                   </span>
                 </div>
               ))}
@@ -118,10 +174,21 @@ const OrderSuccess = () => {
 
             <Separator className="my-4" />
 
+            {parseFloat(order.discount_amount) > 0 && (
+              <div className="flex justify-between items-center text-sm mb-2">
+                <span className="text-muted-foreground">
+                  Desconto {order.coupon_code ? `(${order.coupon_code})` : ""}
+                </span>
+                <span className="text-green-600">
+                  - R$ {parseFloat(order.discount_amount).toFixed(2)}
+                </span>
+              </div>
+            )}
+
             <div className="flex justify-between items-center">
               <span className="font-semibold">Total</span>
               <span className="font-display text-xl font-bold ticket-text">
-                R$ {order.total.toFixed(2)}
+                R$ {parseFloat(order.total).toFixed(2)}
               </span>
             </div>
 
@@ -130,30 +197,117 @@ const OrderSuccess = () => {
             <div className="grid sm:grid-cols-2 gap-3 text-sm">
               <div>
                 <span className="text-muted-foreground">Nome:</span>{" "}
-                <span className="font-medium">{order.customer.name}</span>
+                <span className="font-medium">{order.billing_name}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">E-mail:</span>{" "}
-                <span className="font-medium">{order.customer.email}</span>
+                <span className="font-medium">{order.billing_email}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">Pagamento:</span>{" "}
-                <span className="font-medium capitalize">
-                  {order.paymentMethod === "card"
-                    ? "Cartão de Crédito"
-                    : order.paymentMethod === "pix"
-                    ? "PIX"
-                    : "Boleto"}
-                </span>
+                <span className="font-medium">{paymentLabel}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">Data:</span>{" "}
                 <span className="font-medium">
-                  {new Date(order.createdAt).toLocaleDateString("pt-BR")}
+                  {new Date(order.created_at).toLocaleDateString("pt-BR")}
                 </span>
               </div>
             </div>
           </motion.div>
+
+          {/* Individual ticket cards - each one is a separate print-ticket */}
+          {order.issued_tickets && order.issued_tickets.length > 0 && (
+            <div className="space-y-4 mb-6">
+              <h2 className="font-display text-lg font-bold no-print">
+                Seus Ingressos ({order.issued_tickets.length})
+              </h2>
+              {order.issued_tickets.map((ticket, idx) => (
+                <motion.div
+                  key={ticket.hash}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + idx * 0.05 }}
+                  className="bg-card rounded-2xl p-6 border border-border/50 print-ticket"
+                >
+                  {/* Event info */}
+                  {order.event && (
+                    <div className="flex gap-3 mb-4">
+                      {order.event.cover_image_url && (
+                        <img
+                          src={order.event.cover_image_url}
+                          alt={order.event.name}
+                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">
+                          {order.event.name}
+                        </p>
+                        {order.event.starts_at && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(order.event.starts_at).toLocaleDateString("pt-BR", {
+                              day: "2-digit",
+                              month: "long",
+                              year: "numeric",
+                            })}
+                          </p>
+                        )}
+                        {order.event.venue_name && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {order.event.venue_name}
+                            {order.event.venue_city ? `, ${order.event.venue_city}` : ""}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator className="my-3" />
+
+                  {/* Ticket details */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Ticket className="w-5 h-5 text-primary" />
+                      <span className="font-semibold">{ticket.tier_name}</span>
+                    </div>
+                    <span className="text-xs font-medium text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
+                      {ticket.status === "valid" ? "Válido" : ticket.status}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Participante:</span>{" "}
+                      <span className="font-medium">{ticket.holder_name || order.billing_name}</span>
+                    </div>
+                    {ticket.holder_email && (
+                      <div>
+                        <span className="text-muted-foreground">E-mail:</span>{" "}
+                        <span className="font-medium">{ticket.holder_email}</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-muted-foreground">Pedido:</span>{" "}
+                      <span className="font-medium font-mono text-xs">{order.hash}</span>
+                    </div>
+                  </div>
+
+                  <Separator className="my-3" />
+
+                  {/* Ticket hash as code - prominent for check-in */}
+                  <div className="text-center py-2">
+                    <p className="text-xs text-muted-foreground mb-1">Código do ingresso</p>
+                    <p className="font-mono text-lg font-bold tracking-wider ticket-text">
+                      {ticket.hash}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
 
           <Button
             variant="ticket"
@@ -162,7 +316,7 @@ const OrderSuccess = () => {
             onClick={handleExportTicket}
           >
             <Download className="w-4 h-4 mr-2" />
-            Exportar Ingresso
+            Imprimir {order.issued_tickets && order.issued_tickets.length > 1 ? "Ingressos" : "Ingresso"}
           </Button>
 
           <div className="flex flex-col sm:flex-row gap-3 no-print">

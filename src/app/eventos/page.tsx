@@ -4,7 +4,8 @@ import { useState, useMemo } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import EventCard from "@/components/EventCard";
-import { events } from "@/data/events";
+import { useEvents } from "@/hooks/use-events";
+import { mapApiEventToEvent } from "@/data/events";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,9 +22,16 @@ const Events = () => {
   const [activeCity, setActiveCity] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
+  const { data, isLoading } = useEvents({ per_page: 50 });
+
+  const events = useMemo(
+    () => (data?.data ?? []).map(mapApiEventToEvent),
+    [data]
+  );
+
   const categories = useMemo(
     () => [...new Set(events.map((e) => e.category))].sort(),
-    []
+    [events]
   );
 
   const cities = useMemo(
@@ -36,7 +44,7 @@ const Events = () => {
           })
         ),
       ].sort(),
-    []
+    [events]
   );
 
   const filteredEvents = useMemo(() => {
@@ -45,7 +53,7 @@ const Events = () => {
       const matchesSearch =
         !term ||
         event.title.toLowerCase().includes(term) ||
-        event.artist.toLowerCase().includes(term) ||
+        event.subtitle.toLowerCase().includes(term) ||
         event.category.toLowerCase().includes(term) ||
         event.location.toLowerCase().includes(term);
 
@@ -57,7 +65,7 @@ const Events = () => {
 
       return matchesSearch && matchesCategory && matchesCity;
     });
-  }, [searchTerm, activeCategory, activeCity]);
+  }, [events, searchTerm, activeCategory, activeCity]);
 
   const hasActiveFilters = activeCategory || activeCity;
 
@@ -156,22 +164,30 @@ const Events = () => {
           </div>
 
           {/* Results */}
-          <p className="text-sm text-muted-foreground mb-6">
-            {filteredEvents.length} evento{filteredEvents.length !== 1 ? "s" : ""} encontrado{filteredEvents.length !== 1 ? "s" : ""}
-          </p>
-
-          {filteredEvents.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredEvents.map((event, index) => (
-                <EventCard key={event.id} {...event} index={index} />
-              ))}
+          {isLoading ? (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground text-lg">Carregando eventos...</p>
             </div>
           ) : (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground text-lg">
-                Nenhum evento encontrado com os filtros selecionados.
+            <>
+              <p className="text-sm text-muted-foreground mb-6">
+                {filteredEvents.length} evento{filteredEvents.length !== 1 ? "s" : ""} encontrado{filteredEvents.length !== 1 ? "s" : ""}
               </p>
-            </div>
+
+              {filteredEvents.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {filteredEvents.map((event, index) => (
+                    <EventCard key={event.id} {...event} index={index} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <p className="text-muted-foreground text-lg">
+                    Nenhum evento encontrado com os filtros selecionados.
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>

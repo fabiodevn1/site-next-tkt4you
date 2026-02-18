@@ -1,11 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Ticket, Calendar, MapPin } from "lucide-react";
+import { Ticket, Calendar } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
-import { events } from "@/data/events";
 
 const MyTickets = () => {
   const { tickets } = useCart();
@@ -35,7 +34,6 @@ const MyTickets = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {tickets.map((ticket, idx) => {
-                const event = events.find((e) => e.id === ticket.eventId);
                 return (
                   <motion.div
                     key={ticket.id}
@@ -73,12 +71,6 @@ const MyTickets = () => {
                           <Calendar className="w-4 h-4" />
                           <span>{ticket.eventDate}</span>
                         </div>
-                        {event && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <MapPin className="w-4 h-4" />
-                            <span className="truncate">{event.location}</span>
-                          </div>
-                        )}
                       </div>
 
                       <div className="pt-3 border-t border-border/50 flex items-center justify-between text-sm">

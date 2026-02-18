@@ -3,19 +3,14 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import EventCard from "./EventCard";
-import { events } from "@/data/events";
 import type { Event } from "@/data/events";
 
-export type { Event };
-export { events };
-
 interface EventsGridProps {
-  filteredEvents?: Event[];
+  events: Event[];
+  showViewAll?: boolean;
 }
 
-const EventsGrid = ({ filteredEvents }: EventsGridProps) => {
-  const displayEvents = filteredEvents ?? events;
-
+const EventsGrid = ({ events, showViewAll = true }: EventsGridProps) => {
   return (
     <section className="py-16 px-4" id="events">
       <div className="container mx-auto">
@@ -33,9 +28,9 @@ const EventsGrid = ({ filteredEvents }: EventsGridProps) => {
           </p>
         </motion.div>
 
-        {displayEvents.length > 0 ? (
+        {events.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {displayEvents.map((event, index) => (
+            {events.map((event, index) => (
               <EventCard key={event.id} {...event} index={index} />
             ))}
           </div>
@@ -47,19 +42,21 @@ const EventsGrid = ({ filteredEvents }: EventsGridProps) => {
           </div>
         )}
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-center mt-12"
-        >
-          <Link
-            href="/eventos"
-            className="inline-block px-8 py-4 rounded-xl border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 font-semibold"
+        {showViewAll && events.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mt-12"
           >
-            Ver Todos os Eventos
-          </Link>
-        </motion.div>
+            <Link
+              href="/eventos"
+              className="inline-block px-8 py-4 rounded-xl border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 font-semibold"
+            >
+              Ver Todos os Eventos
+            </Link>
+          </motion.div>
+        )}
       </div>
     </section>
   );

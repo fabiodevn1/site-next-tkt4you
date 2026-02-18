@@ -8,7 +8,20 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import type { CartItem, Order, PurchasedTicket, CustomerData } from "@/types/cart";
+import { toast } from "sonner";
+import type { CartItem, CustomerData, Order, PurchasedTicket } from "@/types/cart";
+import {
+  submitCheckout,
+  type ApiOrderResponse,
+  type CheckoutPayload,
+  type AttendeeData,
+} from "@/lib/api";
+
+const PAYMENT_METHOD_MAP: Record<string, string> = {
+  card: "credit_card",
+  pix: "pix",
+  boleto: "boleto",
+};
 
 interface CartContextType {
   items: CartItem[];
@@ -22,7 +35,11 @@ interface CartContextType {
   setIsCartOpen: (open: boolean) => void;
   orders: Order[];
   tickets: PurchasedTicket[];
-  completePurchase: (customer: CustomerData, paymentMethod: string) => Order;
+  completePurchase: (
+    customer: CustomerData,
+    paymentMethod: string,
+    attendeesMap: Record<number, AttendeeData[]>
+  ) => Promise<ApiOrderResponse>;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -40,27 +57,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() =>
     loadFromStorage("tkt4you-cart", [])
   );
-  const [orders, setOrders] = useState<Order[]>(() =>
-    loadFromStorage("tkt4you-orders", [])
-  );
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("tkt4you-cart", JSON.stringify(items));
   }, [items]);
 
-  useEffect(() => {
-    localStorage.setItem("tkt4you-orders", JSON.stringify(orders));
-  }, [orders]);
-
   const addToCart = (item: CartItem) => {
     setItems((prev) => {
+      // Single-event restriction: all items must belong to the same event
+      if (prev.length > 0 && prev[0].eventId !== item.eventId) {
+        toast.error(
+          "Seu carrinho já possui ingressos de outro evento. Limpe o carrinho para adicionar ingressos de um evento diferente."
+        );
+        return prev;
+      }
+
       const existing = prev.find(
-        (i) => i.eventId === item.eventId && i.ticketType === item.ticketType
+        (i) => i.eventId === item.eventId && i.ticketTierId === item.ticketTierId
       );
       if (existing) {
         return prev.map((i) =>
-          i.eventId === item.eventId && i.ticketType === item.ticketType
+          i.eventId === item.eventId && i.ticketTierId === item.ticketTierId
             ? { ...i, quantity: i.quantity + item.quantity }
             : i
         );
@@ -102,40 +120,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [items]
   );
 
-  const tickets: PurchasedTicket[] = useMemo(() => {
-    const result: PurchasedTicket[] = [];
-    for (const order of orders) {
-      for (const item of order.items) {
-        for (let i = 0; i < item.quantity; i++) {
-          result.push({
-            id: `${order.id}-${item.eventId}-${item.ticketType}-${i}`,
-            orderId: order.id,
-            eventId: item.eventId,
-            eventTitle: item.eventTitle,
-            eventImage: item.eventImage,
-            eventDate: item.eventDate,
-            ticketType: item.ticketType,
-            customerName: order.customer.name,
-            purchasedAt: order.createdAt,
-          });
-        }
-      }
-    }
-    return result;
-  }, [orders]);
+  const completePurchase = async (
+    customer: CustomerData,
+    paymentMethod: string,
+    attendeesMap: Record<number, AttendeeData[]>
+  ): Promise<ApiOrderResponse> => {
+    const eventId = Number(items[0].eventId);
 
-  const completePurchase = (customer: CustomerData, paymentMethod: string): Order => {
-    const order: Order = {
-      id: crypto.randomUUID(),
-      items: items.map((i) => ({ ...i })),
-      total: cartTotal,
-      customer,
-      paymentMethod,
-      createdAt: new Date().toISOString(),
+    const payload: CheckoutPayload = {
+      event_id: eventId,
+      customer: {
+        name: customer.name,
+        email: customer.email,
+        cpf: customer.cpf,
+        phone: customer.phone || undefined,
+      },
+      items: items.map((i) => ({
+        ticket_tier_id: i.ticketTierId,
+        quantity: i.quantity,
+        attendees: attendeesMap[i.ticketTierId] || [],
+      })),
+      payment_method: PAYMENT_METHOD_MAP[paymentMethod] || paymentMethod,
     };
-    setOrders((prev) => [order, ...prev]);
+
+    const response = await submitCheckout(payload);
     clearCart();
-    return order;
+    return response.data;
   };
 
   return (
@@ -150,8 +160,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         cartCount,
         isCartOpen,
         setIsCartOpen,
-        orders,
-        tickets,
+        orders: [],
+        tickets: [],
         completePurchase,
       }}
     >

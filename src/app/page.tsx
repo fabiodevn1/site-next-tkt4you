@@ -4,17 +4,26 @@ import { useState, useMemo } from "react";
 import Header from "@/components/Header";
 import HeroCarousel from "@/components/HeroCarousel";
 import SearchBar from "@/components/SearchBar";
-import EventsGrid, { events } from "@/components/EventsGrid";
+import EventsGrid from "@/components/EventsGrid";
 import Footer from "@/components/Footer";
+import { useEvents } from "@/hooks/use-events";
+import { mapApiEventToEvent } from "@/data/events";
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeCity, setActiveCity] = useState<string | null>(null);
 
+  const { data, isLoading } = useEvents({ per_page: 50 });
+
+  const events = useMemo(
+    () => (data?.data ?? []).map(mapApiEventToEvent),
+    [data]
+  );
+
   const categories = useMemo(
     () => [...new Set(events.map((e) => e.category))].sort(),
-    []
+    [events]
   );
 
   const cities = useMemo(
@@ -27,7 +36,7 @@ const Index = () => {
           })
         ),
       ].sort(),
-    []
+    [events]
   );
 
   const filteredEvents = useMemo(() => {
@@ -36,7 +45,7 @@ const Index = () => {
       const matchesSearch =
         !term ||
         event.title.toLowerCase().includes(term) ||
-        event.artist.toLowerCase().includes(term) ||
+        event.subtitle.toLowerCase().includes(term) ||
         event.category.toLowerCase().includes(term) ||
         event.location.toLowerCase().includes(term);
 
@@ -48,7 +57,7 @@ const Index = () => {
 
       return matchesSearch && matchesCategory && matchesCity;
     });
-  }, [searchTerm, activeCategory, activeCity]);
+  }, [events, searchTerm, activeCategory, activeCity]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,7 +73,13 @@ const Index = () => {
           activeCategory={activeCategory}
           activeCity={activeCity}
         />
-        <EventsGrid filteredEvents={filteredEvents} />
+        {isLoading ? (
+          <div className="text-center py-16">
+            <p className="text-muted-foreground text-lg">Carregando eventos...</p>
+          </div>
+        ) : (
+          <EventsGrid events={filteredEvents} />
+        )}
       </main>
       <Footer />
     </div>

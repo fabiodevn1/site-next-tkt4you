@@ -253,6 +253,11 @@
     margin: 20px auto !important;
     max-width: 520px !important;
     page-break-inside: avoid;
+    page-break-after: always;
+  }
+
+  .print-ticket:last-child {
+    page-break-after: auto;
   }
 
   .print-ticket * {

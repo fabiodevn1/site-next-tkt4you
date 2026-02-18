@@ -3,6 +3,7 @@ export interface CartItem {
   eventTitle: string;
   eventImage: string;
   eventDate: string;
+  ticketTierId: number;
   ticketType: string;
   price: number;
   quantity: number;
