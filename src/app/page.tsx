@@ -6,7 +6,7 @@ import HeroCarousel from "@/components/HeroCarousel";
 import SearchBar from "@/components/SearchBar";
 import EventsGrid from "@/components/EventsGrid";
 import Footer from "@/components/Footer";
-import { useEvents } from "@/hooks/use-events";
+import { useInfiniteEvents } from "@/hooks/use-events";
 import { mapApiEventToEvent } from "@/data/events";
 
 const Index = () => {
@@ -14,10 +14,16 @@ const Index = () => {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeCity, setActiveCity] = useState<string | null>(null);
 
-  const { data, isLoading } = useEvents({ per_page: 50 });
+  const {
+    data,
+    isLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useInfiniteEvents({ per_page: 24 });
 
   const events = useMemo(
-    () => (data?.data ?? []).map(mapApiEventToEvent),
+    () => (data?.pages ?? []).flatMap((page) => page.data.map(mapApiEventToEvent)),
     [data]
   );
 
@@ -59,6 +65,8 @@ const Index = () => {
     });
   }, [events, searchTerm, activeCategory, activeCity]);
 
+  const isFiltering = !!(searchTerm || activeCategory || activeCity);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -78,7 +86,12 @@ const Index = () => {
             <p className="text-muted-foreground text-lg">Carregando eventos...</p>
           </div>
         ) : (
-          <EventsGrid events={filteredEvents} />
+          <EventsGrid
+            events={filteredEvents}
+            hasNextPage={!isFiltering && hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={() => fetchNextPage()}
+          />
         )}
       </main>
       <Footer />
