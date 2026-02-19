@@ -73,7 +73,7 @@ const Header = () => {
                 onClick={() => setIsCartOpen(true)}
               >
                 <ShoppingCart className="w-5 h-5" />
-                {cartCount > 0 && (
+                {mounted && cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground rounded-full text-xs flex items-center justify-center font-bold">
                     {cartCount > 9 ? "9+" : cartCount}
                   </span>

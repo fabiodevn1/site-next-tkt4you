@@ -25,6 +25,7 @@ const PAYMENT_METHOD_MAP: Record<string, string> = {
 
 interface CartContextType {
   items: CartItem[];
+  isHydrated: boolean;
   addToCart: (item: CartItem) => void;
   removeFromCart: (eventId: string, ticketType: string) => void;
   updateQuantity: (eventId: string, ticketType: string, quantity: number) => void;
@@ -54,14 +55,22 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() =>
-    loadFromStorage("tkt4you-cart", [])
-  );
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  // Load cart from localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
+    const stored = loadFromStorage<CartItem[]>("tkt4you-cart", []);
+    if (stored.length > 0) setItems(stored);
+    setIsHydrated(true);
+  }, []);
+
+  // Persist cart to localStorage whenever it changes (but only after hydration)
+  useEffect(() => {
+    if (!isHydrated) return;
     localStorage.setItem("tkt4you-cart", JSON.stringify(items));
-  }, [items]);
+  }, [items, isHydrated]);
 
   const addToCart = (item: CartItem) => {
     setItems((prev) => {
@@ -152,6 +161,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider
       value={{
         items,
+        isHydrated,
         addToCart,
         removeFromCart,
         updateQuantity,

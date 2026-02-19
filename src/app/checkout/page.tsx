@@ -67,9 +67,11 @@ interface ExpandedTicket {
   indexInTier: number;
 }
 
+const BOLETO_BAR_WIDTHS = [3,1,1,3,1,3,3,1,1,3,1,1,3,1,3,1,1,3,3,1,1,3,1,3,1,1,3,1,3,1];
+
 const Checkout = () => {
   const router = useRouter();
-  const { items, cartTotal, cartCount, completePurchase } = useCart();
+  const { items, cartTotal, cartCount, completePurchase, isHydrated } = useCart();
 
   // Buyer data
   const [name, setName] = useState("");
@@ -108,7 +110,9 @@ const Checkout = () => {
       setAttendees((prev) => ({
         ...prev,
         [key]: {
-          ...prev[key],
+          name: prev[key]?.name ?? "",
+          email: prev[key]?.email ?? "",
+          cpf: prev[key]?.cpf ?? "",
           [field]: value,
         },
       }));
@@ -129,6 +133,20 @@ const Checkout = () => {
     },
     [name, email, cpf]
   );
+
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-24 lg:pt-28 pb-16 px-4">
+          <div className="container mx-auto flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -288,7 +306,8 @@ const Checkout = () => {
                 </h2>
 
                 {expandedTickets.map((ticket, idx) => {
-                  const att = attendees[ticket.key] || { name: "", email: "", cpf: "" };
+                  const raw = attendees[ticket.key];
+                  const att = { name: raw?.name ?? "", email: raw?.email ?? "", cpf: raw?.cpf ?? "" };
                   return (
                     <motion.div
                       key={ticket.key}
@@ -466,12 +485,12 @@ const Checkout = () => {
                     <div className="flex flex-col items-center py-8">
                       <div className="w-full max-w-sm h-20 bg-muted rounded-xl flex items-center justify-center mb-4">
                         <div className="flex gap-[2px]">
-                          {Array.from({ length: 30 }).map((_, i) => (
+                          {BOLETO_BAR_WIDTHS.map((w, i) => (
                             <div
                               key={i}
                               className="bg-muted-foreground"
                               style={{
-                                width: Math.random() > 0.5 ? 3 : 1,
+                                width: w,
                                 height: 40,
                               }}
                             />
