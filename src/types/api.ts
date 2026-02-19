@@ -103,3 +103,89 @@ export interface ApiPaginatedResponse<T> {
     total: number;
   };
 }
+
+// --- Site Types ---
+
+export interface ApiSiteUser {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  avatar_url: string | null;
+  document: string | null;
+}
+
+export interface ApiSiteTicket {
+  hash: string;
+  ticket_number: string | null;
+  tier_name: string | null;
+  holder_name: string | null;
+  holder_email: string | null;
+  status: string;
+  checked_in_at: string | null;
+  event: {
+    name: string;
+    slug: string;
+    cover_image_url: string | null;
+    starts_at: string | null;
+    venue_name: string | null;
+    venue_city: string | null;
+  } | null;
+  order_hash: string | null;
+  price_paid: string | null;
+  created_at: string;
+}
+
+export interface ApiCheckin {
+  action: string;
+  result: string;
+  scanned_at: string | null;
+  checkpoint_name: string | null;
+}
+
+export interface ApiSiteTicketDetail extends Omit<ApiSiteTicket, "event"> {
+  holder_document: string | null;
+  holder_phone: string | null;
+  qr_data: string;
+  transfer_count: number;
+  max_transfers: number;
+  transferred_at: string | null;
+  transferred_to_email: string | null;
+  transfer_message: string | null;
+  is_transferable: boolean;
+  checkins: ApiCheckin[];
+  event: {
+    id: number;
+    name: string;
+    slug: string;
+    cover_image_url: string | null;
+    banner_image_url: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    venue_name: string | null;
+    venue_address: string | null;
+    venue_city: string | null;
+    allow_transfer: boolean;
+  } | null;
+}
+
+export interface ApiRefund {
+  id: number;
+  order_hash: string | null;
+  event_name: string | null;
+  amount: string;
+  reason: string;
+  status: string;
+  created_at: string;
+}
+
+export interface ApiHelpArticle {
+  id: number;
+  type: string;
+  title: string;
+  slug: string | null;
+  content: string | null;
+  category: string | null;
+  sort_order: number;
+  created_at: string;
+}

@@ -1,12 +1,27 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Mail, Phone, ArrowRight } from "lucide-react";
+import { Mail, Phone, ArrowRight, HelpCircle } from "lucide-react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { fetchHelpArticles } from "@/lib/api";
 
 const Ajuda = () => {
+  const { data: articlesData } = useQuery({
+    queryKey: ["help-articles"],
+    queryFn: () => fetchHelpArticles(),
+  });
+
+  const articles = articlesData?.data ?? [];
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -90,6 +105,37 @@ const Ajuda = () => {
               <ArrowRight className="w-5 h-5 text-muted-foreground/30 group-hover:text-green-500 group-hover:translate-x-1 transition-all duration-300 flex-shrink-0" />
             </a>
           </motion.div>
+
+          {/* Artigos de Ajuda */}
+          {articles.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="mb-16"
+            >
+              <div className="flex items-center gap-2 mb-6">
+                <HelpCircle className="w-5 h-5 text-primary" />
+                <h2 className="font-display text-xl font-bold">Artigos de Ajuda</h2>
+              </div>
+              <Accordion type="single" collapsible className="space-y-2">
+                {articles.map((article) => (
+                  <AccordionItem
+                    key={article.id}
+                    value={String(article.id)}
+                    className="bg-card rounded-xl border border-border/50 px-4"
+                  >
+                    <AccordionTrigger className="text-left font-medium hover:no-underline">
+                      {article.title}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-muted-foreground whitespace-pre-line">
+                      {article.content}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </motion.div>
+          )}
 
           {/* CTA para FAQ */}
           <motion.div

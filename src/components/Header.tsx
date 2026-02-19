@@ -4,31 +4,35 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Menu, X, Moon, Sun, ShoppingCart } from "lucide-react";
+import { Menu, X, Moon, Sun, ShoppingCart, LogIn, ShoppingBag, Ticket, LogOut, User, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
+import { useSession, signOut } from "next-auth/react";
 import { useCart } from "@/contexts/CartContext";
 import CartSidebar from "@/components/CartSidebar";
+import UserMenu from "@/components/UserMenu";
+import LoginDialog from "@/components/LoginDialog";
 import logo from "@/assets/logo-ticket4you.png";
+import { Separator } from "@/components/ui/separator";
+
+const navLinks = [
+  { name: "Início", href: "/" },
+  { name: "Eventos", href: "/eventos" },
+];
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
   const { theme, setTheme } = useTheme();
   const { cartCount, setIsCartOpen } = useCart();
+  const { data: session } = useSession();
 
   useEffect(() => setMounted(true), []);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
-
-  const navLinks = [
-    { name: "Início", href: "/" },
-    { name: "Eventos", href: "/eventos" },
-    { name: "Meus Ingressos", href: "/meus-ingressos" },
-    { name: "Meus Pedidos", href: "/meus-pedidos" },
-  ];
 
   return (
     <>
@@ -93,6 +97,22 @@ const Header = () => {
                 )}
               </Button>
 
+              {/* Auth: Desktop */}
+              <div className="hidden md:flex items-center">
+                {session ? (
+                  <UserMenu />
+                ) : (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setShowLoginDialog(true)}
+                  >
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Entrar
+                  </Button>
+                )}
+              </div>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -122,11 +142,75 @@ const Header = () => {
                   {link.name}
                 </Link>
               ))}
+
+              {session ? (
+                <>
+                  <Separator className="my-2" />
+                  <Link
+                    href="/perfil"
+                    className="flex items-center gap-2 py-3 text-muted-foreground hover:text-foreground transition-colors font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <User className="h-4 w-4" />
+                    Meu Perfil
+                  </Link>
+                  <Link
+                    href="/favoritos"
+                    className="flex items-center gap-2 py-3 text-muted-foreground hover:text-foreground transition-colors font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Heart className="h-4 w-4" />
+                    Favoritos
+                  </Link>
+                  <Link
+                    href="/meus-pedidos"
+                    className="flex items-center gap-2 py-3 text-muted-foreground hover:text-foreground transition-colors font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    Meus Pedidos
+                  </Link>
+                  <Link
+                    href="/meus-ingressos"
+                    className="flex items-center gap-2 py-3 text-muted-foreground hover:text-foreground transition-colors font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Ticket className="h-4 w-4" />
+                    Meus Ingressos
+                  </Link>
+                  <Separator className="my-2" />
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      signOut({ callbackUrl: "/" });
+                    }}
+                    className="flex items-center gap-2 py-3 text-destructive hover:text-destructive/80 transition-colors font-medium w-full text-left"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sair
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Separator className="my-2" />
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setShowLoginDialog(true);
+                    }}
+                    className="flex items-center gap-2 py-3 text-primary hover:text-primary/80 transition-colors font-medium w-full text-left"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    Entrar
+                  </button>
+                </>
+              )}
             </motion.nav>
           )}
         </div>
       </header>
       <CartSidebar />
+      <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
     </>
   );
 };

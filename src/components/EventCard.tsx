@@ -4,9 +4,11 @@ import { motion } from "framer-motion";
 import { Calendar, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import FavoriteButton from "@/components/FavoriteButton";
 
 interface EventCardProps {
   id: string;
+  eventId?: number;
   slug: string;
   title: string;
   subtitle: string;
@@ -19,6 +21,8 @@ interface EventCardProps {
 }
 
 const EventCard = ({
+  id,
+  eventId,
   slug,
   title,
   subtitle,
@@ -29,11 +33,13 @@ const EventCard = ({
   category,
   index = 0,
 }: EventCardProps) => {
+  const numericEventId = eventId ?? Number(id);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.5 }}
+      transition={{ delay: Math.min(index * 0.1, 0.8), duration: 0.5 }}
       whileHover={{ y: -8 }}
       className="group"
     >
@@ -52,6 +58,14 @@ const EventCard = ({
             <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full ticket-gradient text-primary-foreground">
               {category}
             </span>
+
+            {/* Favorite Button */}
+            {numericEventId > 0 && (
+              <FavoriteButton
+                eventId={numericEventId}
+                className="absolute top-3 right-3"
+              />
+            )}
 
             {/* Price Tag */}
             {price > 0 && (

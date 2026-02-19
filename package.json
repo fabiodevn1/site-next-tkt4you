@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3075",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -47,7 +47,9 @@
     "input-otp": "^1.4.2",
     "lucide-react": "^0.574.0",
     "next": "16.1.6",
+    "next-auth": "^5.0.0-beta.30",
     "next-themes": "^0.4.6",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.3",
     "react-day-picker": "^8.10.1",
     "react-dom": "19.2.3",

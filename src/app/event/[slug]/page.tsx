@@ -12,7 +12,6 @@ import {
   Minus,
   Plus,
   Share2,
-  Heart,
   ArrowLeft,
   Check,
   Loader2,
@@ -24,6 +23,7 @@ import Footer from "@/components/Footer";
 import { useEventBySlug } from "@/hooks/use-events";
 import { mapApiEventToEvent } from "@/data/events";
 import { useCart } from "@/contexts/CartContext";
+import FavoriteButton from "@/components/FavoriteButton";
 
 const EventDetail = () => {
   const params = useParams();
@@ -32,8 +32,6 @@ const EventDetail = () => {
   const { addToCart } = useCart();
   const [selectedTicket, setSelectedTicket] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [isFavorite, setIsFavorite] = useState(false);
-
   const { data, isLoading, error } = useEventBySlug(slug);
 
   const event = useMemo(() => {
@@ -241,16 +239,12 @@ const EventDetail = () => {
                     {hasTickets ? "Selecione seu ingresso" : "Ingressos"}
                   </h3>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => setIsFavorite(!isFavorite)}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                        isFavorite
-                          ? "bg-accent text-accent-foreground"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      <Heart className={`w-5 h-5 ${isFavorite ? "fill-current" : ""}`} />
-                    </button>
+                    {data?.data?.id && (
+                      <FavoriteButton
+                        eventId={data.data.id}
+                        className="w-10 h-10"
+                      />
+                    )}
                     <button className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
                       <Share2 className="w-5 h-5" />
                     </button>
