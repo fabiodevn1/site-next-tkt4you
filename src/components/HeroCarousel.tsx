@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import type { ApiEvent } from "@/types/api";
 import { useEvents } from "@/hooks/use-events";
+import { HeroCarouselSkeleton } from "@/components/skeletons";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -18,7 +19,7 @@ const gradients = [
 
 const HeroCarousel = () => {
   const [current, setCurrent] = useState(0);
-  const { data } = useEvents({ per_page: 5 });
+  const { data, isLoading } = useEvents({ per_page: 5 });
 
   const featuredEvents = data?.data ?? [];
   const total = featuredEvents.length;
@@ -30,6 +31,10 @@ const HeroCarousel = () => {
     }, 5000);
     return () => clearInterval(timer);
   }, [total]);
+
+  if (isLoading) {
+    return <HeroCarouselSkeleton />;
+  }
 
   if (total === 0) {
     return (

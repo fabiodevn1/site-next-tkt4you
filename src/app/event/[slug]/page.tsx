@@ -14,7 +14,6 @@ import {
   Share2,
   ArrowLeft,
   Check,
-  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -24,6 +23,7 @@ import { useEventBySlug } from "@/hooks/use-events";
 import { mapApiEventToEvent } from "@/data/events";
 import { useCart } from "@/contexts/CartContext";
 import FavoriteButton from "@/components/FavoriteButton";
+import { EventDetailSkeleton } from "@/components/skeletons";
 
 const EventDetail = () => {
   const params = useParams();
@@ -43,9 +43,7 @@ const EventDetail = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="flex items-center justify-center h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
+        <EventDetailSkeleton />
         <Footer />
       </div>
     );

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ShoppingBag, ChevronRight, LogIn, Loader2 } from "lucide-react";
+import { ShoppingBag, ChevronRight, LogIn } from "lucide-react";
+import { OrdersListSkeleton } from "@/components/skeletons";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
@@ -62,9 +63,7 @@ const MyOrders = () => {
 
           {/* Loading state */}
           {(isLoading || isAuthLoading) && (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
+            <OrdersListSkeleton count={4} />
           )}
 
           {/* Authenticated: API orders */}

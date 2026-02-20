@@ -24,6 +24,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
 import type { AttendeeData } from "@/lib/api";
+import { CheckoutSkeleton } from "@/components/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function maskCPF(value: string): string {
   return value
@@ -139,8 +141,10 @@ const Checkout = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="pt-24 lg:pt-28 pb-16 px-4">
-          <div className="container mx-auto flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="container mx-auto">
+            <Skeleton className="h-5 w-44 mb-6" />
+            <Skeleton className="h-9 w-32 mb-8" />
+            <CheckoutSkeleton />
           </div>
         </main>
         <Footer />
@@ -299,10 +303,12 @@ const Checkout = () => {
               {/* Individual attendee cards */}
               <div className="space-y-4">
                 <h2 className="font-display text-xl font-bold">
-                  Dados dos participantes
-                  <span className="text-sm font-normal text-muted-foreground ml-2">
-                    ({cartCount} {cartCount === 1 ? "ingresso" : "ingressos"})
-                  </span>
+                  {cartCount === 1 ? "Dados do participante" : "Dados dos participantes"}
+                  {cartCount > 1 && (
+                    <span className="text-sm font-normal text-muted-foreground ml-2">
+                      ({cartCount} ingressos)
+                    </span>
+                  )}
                 </h2>
 
                 {expandedTickets.map((ticket, idx) => {
@@ -322,9 +328,11 @@ const Checkout = () => {
                           <span className="font-semibold text-sm">
                             {ticket.ticketType}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            — Ingresso {ticket.indexInTier + 1}
-                          </span>
+                          {cartCount > 1 && (
+                            <span className="text-xs text-muted-foreground">
+                              — Ingresso {ticket.indexInTier + 1}
+                            </span>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -333,7 +341,7 @@ const Checkout = () => {
                           className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
                         >
                           <Copy className="w-3 h-3" />
-                          Copiar dados do comprador
+                          {cartCount === 1 ? "Usar meus dados" : "Copiar dados do comprador"}
                         </button>
                       </div>
 

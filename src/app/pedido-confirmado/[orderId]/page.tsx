@@ -4,7 +4,8 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CheckCircle2, Ticket, ShoppingBag, Download, Loader2, Calendar, MapPin } from "lucide-react";
+import { CheckCircle2, Ticket, ShoppingBag, Download, Calendar, MapPin } from "lucide-react";
+import { OrderConfirmationSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import Header from "@/components/Header";
@@ -34,8 +35,8 @@ const OrderSuccess = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="pt-24 lg:pt-28 pb-16 px-4">
-          <div className="container mx-auto flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="container mx-auto max-w-2xl">
+            <OrderConfirmationSkeleton />
           </div>
         </main>
         <Footer />

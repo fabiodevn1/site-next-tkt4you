@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Ticket, Calendar, LogIn, Loader2 } from "lucide-react";
+import { Ticket, Calendar, LogIn } from "lucide-react";
+import { TicketsGridSkeleton } from "@/components/skeletons";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
@@ -51,9 +52,7 @@ const MyTickets = () => {
 
           {/* Loading state */}
           {(isLoading || isAuthLoading) && (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
+            <TicketsGridSkeleton count={6} />
           )}
 
           {/* Authenticated: API tickets */}

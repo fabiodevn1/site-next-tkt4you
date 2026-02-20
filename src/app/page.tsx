@@ -8,6 +8,7 @@ import EventsGrid from "@/components/EventsGrid";
 import Footer from "@/components/Footer";
 import { useInfiniteEvents } from "@/hooks/use-events";
 import { mapApiEventToEvent } from "@/data/events";
+import { EventsGridSkeleton, HeroCarouselSkeleton } from "@/components/skeletons";
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,8 +83,10 @@ const Index = () => {
           activeCity={activeCity}
         />
         {isLoading ? (
-          <div className="text-center py-16">
-            <p className="text-muted-foreground text-lg">Carregando eventos...</p>
+          <div className="px-4">
+            <div className="container mx-auto py-12">
+              <EventsGridSkeleton count={8} />
+            </div>
           </div>
         ) : (
           <EventsGrid

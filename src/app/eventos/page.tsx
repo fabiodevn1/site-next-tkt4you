@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EventsGridSkeleton } from "@/components/skeletons";
 
 const Events = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -165,9 +166,7 @@ const Events = () => {
 
           {/* Results */}
           {isLoading ? (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground text-lg">Carregando eventos...</p>
-            </div>
+            <EventsGridSkeleton count={8} />
           ) : (
             <>
               <p className="text-sm text-muted-foreground mb-6">

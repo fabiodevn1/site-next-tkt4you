@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Heart, LogIn, Loader2 } from "lucide-react";
+import { Heart, LogIn } from "lucide-react";
+import { EventsGridSkeleton } from "@/components/skeletons";
 import { useSession } from "next-auth/react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -42,9 +43,7 @@ const Favoritos = () => {
           )}
 
           {(isLoading || isAuthLoading) && (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
+            <EventsGridSkeleton count={4} />
           )}
 
           {isAuthenticated && !isLoading && events.length === 0 && (

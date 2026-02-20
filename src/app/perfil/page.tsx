@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { User, Lock, LogIn, Loader2, Save } from "lucide-react";
+import { ProfileSkeleton } from "@/components/skeletons";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -106,9 +107,7 @@ const Perfil = () => {
           )}
 
           {(isLoading || isAuthLoading) && (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
+            <ProfileSkeleton />
           )}
 
           {isAuthenticated && !isLoading && user && (
